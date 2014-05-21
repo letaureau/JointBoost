@@ -1,0 +1,13 @@
+function [ o_val ] = getithFeat_JB( i_params, i_featInd )
+%GETITHFEAT Summary of this function goes here
+%   Detailed explanation goes here
+
+%% textonboost features
+o_val = getithTextonboost(...
+    i_params.textonboostParams, ...
+    i_params.data, ...
+    i_params.trDBIDMap, ...
+    i_featInd);
+
+end
+
