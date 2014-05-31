@@ -2,6 +2,7 @@ function [ o_mdl ] = trainJointBoost_mult( i_params, i_featFunc, i_featFuncParam
 %LEARNGENTLEBOOST learn gentleboost using axis-parallel linear functions
 %   Detailed explanation goes here
 
+nThread = 32;
 nWeakLearner = i_params.nWeakLearner;
 nData = i_params.nData;
 nCls = i_params.nCls;
@@ -15,11 +16,15 @@ mdls = struct('a', 0, 'b', 0, 'f', 0, 'theta', 0, 'kc', zeros(1, nCls), 'S', fal
 mdls = repmat(mdls, [nWeakLearner, 1]);
 
 %% init labels
-for dInd=1:size(labels, 1)
+parfor (dInd=1:size(labels, 1), nThread)
+% for dInd=1:size(labels, 1)
     if isnan(i_labels(dInd))
         continue;
     end
-    labels(dInd, i_labels(dInd)) = 1;
+    dthLabels = labels(dInd, :);
+    dthLabels(i_labels(dInd)) = 1;
+    labels(dInd, :) = dthLabels;
+%     labels(dInd, i_labels(dInd)) = 1;
 end
 
 %% consider previous weak classifiers
@@ -72,7 +77,7 @@ function [o_mdl, o_hs] = fitStump(i_params, i_featFunc, i_featFuncParams, i_labe
 featValRange = i_params.featValRange;
 nData = i_params.nData;
 nCls = i_params.nCls;
-nMaxThread = 32;
+nMaxThread = 24;
 
 % pre-allocate
 mdl_init = struct('a', 0, 'b', 0, 'f', 0, 'theta', 0, 'kc', zeros(1, nCls), 'S', false(1, nCls));
@@ -223,15 +228,13 @@ besths_S = zeros(nData, nCls);
 
 
 %% precalc features
-% randFeatInd = randperm(featDim, max(1, round(featDim*rndFeatSelRatio)));
 redFeatDim = numel(i_featInd);
 ithfeats_precomp = zeros(nData, redFeatDim, 'single');
-parfor (i=1:redFeatDim, nThread)    
+parfor (i=1:numel(i_featInd), nThread)    
     ithfeats_precomp(:, i) = getithFeat_JB( i_featFuncParams, i_featInd(i) ); % cannot beautify due to the Matlab Coder. It's more efficient
 end
 
-
-% greadly finding S(n)
+% greedly finding S(n)
 S = false(1, nCls);
 a_leaf = zeros(1, nCls, numel(i_featInd), numel(featValRange));
 b_leaf = zeros(1, nCls, numel(i_featInd), numel(featValRange));
@@ -266,6 +269,8 @@ for n=1:nCls
         bestths_ft = zeros(redFeatDim, 1); % parfor friendly code
 
         parfor (rfInd=1:redFeatDim, nThread)
+%         warning('dbg');
+%         for rfInd=1:redFeatDim
             fInd = i_featInd(rfInd);
             ithfeats = ithfeats_precomp(:, rfInd);
 
@@ -276,14 +281,15 @@ for n=1:nCls
             b_leaf_tmp = b_leaf(1, curS, rfInd, :);
             for tInd=1:numel(featValRange)
 %                 delta_pos = (ithfeats>featValRange(tInd)); % for efficiency
-
                 
                 % estimate a and b
-                w_pos = sum(bsxfun(@times, ws_inS, (ithfeats>featValRange(tInd))), 1);
-                w_neg = sum(bsxfun(@times, ws_inS, ~(ithfeats>featValRange(tInd))), 1);
+                w_pos_part = bsxfun(@times, ws_inS, (ithfeats>featValRange(tInd)));
+                w_pos = sum(w_pos_part, 1);
+                w_neg_part = bsxfun(@times, ws_inS, ~(ithfeats>featValRange(tInd)));
+                w_neg = sum(w_neg_part, 1);
                 if sum(curS) == 1 % leaf
-                    a = sum(sum(ws_inS.*labels_inS, 2).*(ithfeats>featValRange(tInd)))/(sum(sum(ws_inS, 2).*(ithfeats>featValRange(tInd)))+eps);
-                    b = sum(sum(ws_inS.*labels_inS, 2).*(~(ithfeats>featValRange(tInd))))/(sum(sum(ws_inS, 2).*(~(ithfeats>featValRange(tInd))))+eps);
+                    a = sum(w_pos_part(:, 1).*labels_inS(:, 1))/(sum(w_pos_part(:, 1))+eps);
+                    b = sum(w_neg_part(:, 1).*labels_inS(:, 1))/(sum(w_neg_part(:, 1))+eps);
                     
                     a_leaf_tmp(1, 1, 1, tInd) = a;
                     b_leaf_tmp(1, 1, 1, tInd) = b;
@@ -334,8 +340,7 @@ for n=1:nCls
             
             minfInd = i_featInd(minInd);
             delta_pos = getithFeat_JB(i_featFuncParams, minfInd)>featValRange(bestth);
-%             delta_pos = ithfeats_precomp(:, minInd) >
-%             featValRange(bestth); % Matlab Coder crashes
+%             delta_pos = ithfeats_precomp(:, minInd) > featValRange(bestth); % Matlab Coder crashes
             hs = zeros(nData, nCls);
             hs(:, curS) = repmat(bestMdl_ft.a*(delta_pos) + bestMdl_ft.b*(~(delta_pos)), [1, sum(curS)]);
             hs(:, ~curS) = repmat(bestMdl_ft.kc(~curS), [nData, 1]);

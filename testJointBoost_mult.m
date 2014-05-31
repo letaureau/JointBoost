@@ -7,8 +7,8 @@ nData = i_params.nData;
 
 o_estCls = zeros(nData, 1)*nan;
 o_vals = zeros(nData, nCls);
-% parfor (dInd=1:nData, 24)
-for dInd=1:nData
+parfor (dInd=1:nData, 32)
+% for dInd=1:nData
     [o_estCls(dInd), o_vals(dInd, :)] = classifyJB( i_params, i_mdls, i_featFunc, i_featFuncParams, dInd );
 end
 
@@ -38,7 +38,7 @@ for c=1:nCls
     end
     o_vals(c) = val;
     
-    if val_max < val
+    if val_max < val % remove later
         val_max = val;
         o_cls = c;
     end
