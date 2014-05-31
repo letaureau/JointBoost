@@ -2,6 +2,7 @@ function [ o_mdl ] = trainJointBoost_mult( i_params, i_featFunc, i_featFuncParam
 %LEARNGENTLEBOOST learn gentleboost using axis-parallel linear functions
 %   Detailed explanation goes here
 
+
 nThread = 32;
 nWeakLearner = i_params.nWeakLearner;
 nData = i_params.nData;
