@@ -1,7 +1,7 @@
 %% data settings
-nCls = 3;
+nCls = 2;
 featDim = 2;
-nDataPerCls = 100*ones(nCls, 1);
+nDataPerCls = [100; 100]; %100*ones(nCls, 1);
 mus = [0 0; 0 1; 1 0; -1 2; 1 2];
 sigs = ones(nCls, 1)*0.1;
 train_cols = {'rx' 'gx' 'bx' 'kx' 'yx'};

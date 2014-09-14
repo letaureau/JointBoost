@@ -20,7 +20,7 @@ function [ o_mdl ] = TrainJointBoost( i_xs, i_ys, i_params )
 %                                       0:0.1:1
 %           i_params.verbosity          verbosity level. 0: silent
 % 
-
+% 
 % ----------
 %   Output:
 % 
@@ -50,7 +50,7 @@ mdls = struct('a', 0, 'b', 0, 'f', 0, 'theta', 0, 'kc', zeros(1, nCls), 'S', fal
 mdls = repmat(mdls, [nWeakLearner, 1]);
 
 % init labels
-for dInd=1:nData %%FIXME: par?
+for dInd=1:nData
     if i_ys(dInd) == 0 % bg
         continue;
     end
@@ -64,8 +64,6 @@ for m=1:nWeakLearner
     end
             
     [mdls(m), hs] = FitStumpForAllS(i_xs, zs, ws, i_params);
-%     Hs = bsxfun(@plus, Hs, hs);
-%     ws = bsxfun(@times, ws, exp(-bsxfun(@times, labels, hs))); 
 %     Hs = Hs + hs; % don't need to calc.
     ws = ws.*exp(-zs.*hs);
     
