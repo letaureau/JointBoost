@@ -1,16 +1,16 @@
-function [ o_mdl ] = TrainJointBoost( i_xs, i_ys, i_params )
+function [ o_mdl ] = TrainJointBoost( i_xs, i_ys, i_params, i_x_meta )
 % 
 %   train JointBoost
 %   
 % ----------
 %   Input: 
 % 
-%       i_xs        data. n x f matrix, where n is the number of data (i_params.nData) and 
+%       i_xs        a data or a function handle. n x f matrix, where n is the number of data (i_params.nData) and 
 %                   f is the number of a feature (i_params.featDim)
 % 
 %       i_ys        labels of each data. Non-negative integer number. 0 is the bg.
 % 
-%       i_params:       parameters of the JointBoost algorithm
+%       i_params    parameters of the JointBoost algorithm
 %           i_params.nWeakLearner       the number of a weak learner
 %           i_params.nCls               the number of a class except for the bg
 %           i_params.nData
@@ -20,6 +20,8 @@ function [ o_mdl ] = TrainJointBoost( i_xs, i_ys, i_params )
 %                                       0:0.1:1
 %           i_params.verbosity          verbosity level. 0: silent
 % 
+%       i_x_meta    (optional) meta information of i_xs when i_xs is a function
+%                   handle. Need this due to Matlab Coder.
 % 
 % ----------
 %   Output:
@@ -42,6 +44,11 @@ nData = i_params.nData;
 nCls = i_params.nCls;
 verbosity = i_params.verbosity;
 
+if nargin == 3
+    i_x_meta = [];
+end
+    
+
 zs = ones(nData, nCls)*(-1);
 % Hs = zeros(nData, nCls);
 ws = ones(nData, nCls);
@@ -63,7 +70,7 @@ for m=1:nWeakLearner
         fprintf('* boosting iter: %d/%d...', m, nWeakLearner);
     end
             
-    [mdls(m), hs] = FitStumpForAllS(i_xs, zs, ws, i_params);
+    [mdls(m), hs] = FitStumpForAllS(i_xs, zs, ws, i_params, i_x_meta);
 %     Hs = Hs + hs; % don't need to calc.
     ws = ws.*exp(-zs.*hs);
     
@@ -89,7 +96,7 @@ o_hs(:, i_mdl.S) = repmat(i_mdl.a*i_delta_pos + i_mdl.b*(~i_delta_pos), [1, sum(
 end
 
 
-function [o_mdl, o_hs] = FitStumpForAllS(i_xs, i_zs, i_ws, i_params)
+function [o_mdl, o_hs] = FitStumpForAllS(i_xs, i_zs, i_ws, i_params, i_x_meta)
 
 %% init
 featDim = i_params.featDim;
@@ -130,7 +137,11 @@ for totSize=1:nCls
                 curTheta = featValRange(tInd);
                 
                 % estimate a and b
-                delta_pos = i_xs(:, fInd) > curTheta;
+                if isa(i_xs, 'function_handle')
+                    delta_pos = i_xs(1:nData, fInd, i_x_meta) > curTheta;
+                else
+                    delta_pos = i_xs(:, fInd) > curTheta;
+                end
                 
                 a = sum(sum(bsxfun(@times, wz_S, delta_pos), 1))/sum(sum(bsxfun(@times, i_ws(:, curS), delta_pos), 1));
                 b = sum(sum(bsxfun(@times, wz_S, ~delta_pos), 1))/sum(sum(bsxfun(@times, i_ws(:, curS), ~delta_pos), 1));

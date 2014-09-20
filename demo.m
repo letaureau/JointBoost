@@ -1,3 +1,4 @@
+function demo
 %% data settings
 nCls = 2;
 featDim = 2;
@@ -49,14 +50,14 @@ JBParams = struct(...
     'verbosity', 1);
 
 mdls = TrainJointBoost( ...
-    data_tr, ...
-    labels_tr, JBParams);
+    @featureFunc, ...
+    labels_tr, JBParams, data_tr);
 
 %% test
 disp('* test...');
 JBParams.nData = numel(teInd);
 [estCls, vals] = PredJointBoost(...
-    data_te, ...
+    data_tr, ...
     mdls, ...
     JBParams);
 
@@ -78,3 +79,9 @@ for i=1:size(data_te, 1)
     hold off;
 end
 
+
+end
+
+function [o_val] = featureFunc(i_i, i_j, i_x_meta)
+o_val = i_x_meta(i_i, i_j);
+end
