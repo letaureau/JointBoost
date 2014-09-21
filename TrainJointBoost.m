@@ -133,16 +133,16 @@ for totSize=1:nCls
             wz_nS = i_ws(:, ~curS).*i_zs(:, ~curS);
             kc = ones(1, nCls)*nan;
             kc(~curS) = sum(wz_nS, 1)./sum(i_ws(:, ~curS), 1); 
+            if isa(i_xs, 'function_handle')
+                x_fInd = i_xs(1:nData, fInd, i_x_meta);
+            else
+                x_fInd = i_xs(:, fInd);
+            end
             for tInd=1:numel(featValRange)
                 curTheta = featValRange(tInd);
                 
                 % estimate a and b
-                if isa(i_xs, 'function_handle')
-                    delta_pos = i_xs(1:nData, fInd, i_x_meta) > curTheta;
-                else
-                    delta_pos = i_xs(:, fInd) > curTheta;
-                end
-                
+                delta_pos = x_fInd > curTheta;
                 a = sum(sum(bsxfun(@times, wz_S, delta_pos), 1))/sum(sum(bsxfun(@times, i_ws(:, curS), delta_pos), 1));
                 b = sum(sum(bsxfun(@times, wz_S, ~delta_pos), 1))/sum(sum(bsxfun(@times, i_ws(:, curS), ~delta_pos), 1));
                 
